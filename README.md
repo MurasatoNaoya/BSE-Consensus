@@ -55,4 +55,6 @@ Allows users to submit job requests for custom market sessions.
  
  Empirical outputs from running the BSE Consensus protocol a few hundred times across a wide range of trader specification and market environments. 
  
- ## **BSE.py** An adjusted version of the original Bristol Stock Exchange limit orderbook market simulation, allowing for the deterministic seeding of market sessions.
+ ## **BSE.py** 
+ 
+ An adjusted version of the original Bristol Stock Exchange limit orderbook market simulation, allowing for the deterministic seeding of market sessions.
