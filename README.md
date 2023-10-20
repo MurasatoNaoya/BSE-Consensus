@@ -42,3 +42,58 @@ Below are the key components and features:
  #### **BSE.py** 
  
  An adjusted version of the original Bristol Stock Exchange limit orderbook market simulation, allowing for the deterministic seeding of market sessions.
+
+
+
+
+## BSE Consensus
+
+BSE Consensus is a Python codebase for blockchain simulations and market session modeling. It allows you to create, mine, and validate blocks, and simulate market sessions with customizable parameters. Use this guide to get started with BSE Consensus:
+
+### Getting Started
+
+1. **Block Creation:**
+
+   - Create a new block by initializing the `Block` class with your data, previous hash, message, user configuration, proof, and seed. You can also leave these fields empty to generate a default "Genesis Block."
+
+2. **Mining Blocks:**
+
+   - Use the `pre_hash` method to mine a block and generate a seed that makes the market session outcomes deterministic. Specify the mining target and optional user configuration if needed.
+
+3. **Market Simulations:**
+
+   - Use the `run_market_sessions` method to simulate market sessions. You can set the number of iterations and various market parameters like trader types, supply and demand curves, time intervals, and more. Market results will be logged, and you can enable options like supply and demand curve visualization.
+
+4. **Block Validation:**
+
+   - After market simulations, the code performs a post-hashing step to validate the market session results. It calculates the average Profit Per Second (PPS) and verifies if it meets a specified difficulty threshold.
+
+5. **Customization and Integration:**
+
+   - Customize the code and integrate it into your blockchain project. Modify configurations, trader types, and supply-demand curves to meet your specific requirements.
+
+### Example Usage
+
+Here's an example of how to use BSE Consensus:
+
+```python
+# Create a new block with custom data and configurations.
+my_block = Block(data="Sample Data", user_config=my_config)
+
+# Mine the block with a specified difficulty target.
+my_block.proof_of_work(difficulty=4)
+
+# Simulate market sessions with specific parameters.
+my_block.run_market_sessions(n=10, target=4, pouw_difficulty=8, sup_dem_curve=True, posthash=True, user_config=my_config)
+
+# Validate the results and check if the average PPS meets the difficulty threshold.
+is_valid = my_block.post_hash("market_results.csv", seed=my_block.seed, pouw_difficulty=8, verifying=False)
+
+# Output the results.
+if is_valid:
+    print("The market session passed the post-hashing step.")
+else:
+    print("The market session was rejected due to low PPS.")
+
+# Customize the code to meet your specific project needs.
+
