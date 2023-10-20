@@ -31,7 +31,26 @@ of PoUW consensus protocols more generally.
 This repository containing the following scripts of the complete project - 
 
 
-- BSE Consensus, Implementation.ipynb: Containing the core protocol level implementation, notably for the base useful computation, proof generation and proof validation. 
+## **BSE Consensus, Implementation.ipynb**:
+-
+-
+-    Containing the core protocol level implementation, notably for the base useful computation, proof generation and proof validation.
+
+
+Below are the key components and features:
+
+Block Class:
+
+Represents individual blocks in the blockchain.
+Contains methods for calculating hashes, performing proof of work, and managing market session details.
+Blockchain Class:
+
+Manages the blockchain and its consensus process.
+Handles block validation and mining using BSE or standard proof of work.
+BSE Integration:
+
+Integrates BSE functionality to simulate market sessions for block creation.
+Allows users to submit job requests for custom market sessions.
 
 - BSE Consensus, Results.ipynb: Empirical outputs from running the BSE Consensus protocol a few hundred times across a wide range of trader specification and market environments. 
 
