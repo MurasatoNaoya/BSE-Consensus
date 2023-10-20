@@ -43,7 +43,7 @@ Below are the key components and features:
  An adjusted version of the original Bristol Stock Exchange limit orderbook market simulation, allowing for the deterministic seeding of market sessions.
 
 
-### Usage and Example Instance
+### Usage 
 
 1. **Block Creation:**
 
@@ -64,30 +64,3 @@ Below are the key components and features:
 5. **Customisation and Integration:**
 
    - Tailor the code and integrate it into your blockchain project. Modify configurations, trader types, and supply-demand curves to meet your specific requirements.
-
-### Example Usage
-
-Here's an example of how to use BSE Consensus:
-
-```python
-# Create a new block with custom data and configurations.
-my_block = Block(data="Sample Data", user_config=my_config)
-
-# Mine the block with a specified difficulty target.
-my_block.proof_of_work(difficulty=4)
-
-# Simulate market sessions with specific parameters.
-my_block.run_market_sessions(n=10, target=4, pouw_difficulty=8, sup_dem_curve=True, posthash=True, user_config=my_config)
-
-# Validate the results and check if the average PPS meets the difficulty threshold.
-is_valid = my_block.post_hash("market_results.csv", seed=my_block.seed, pouw_difficulty=8, verifying=False)
-
-# Output the results.
-if is_valid:
-    print("The market session passed the post-hashing step.")
-else:
-    print("The market session was rejected due to low PPS.")
-
-# Tailor the code to meet your specific project needs.
-
-
