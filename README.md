@@ -31,7 +31,7 @@ of PoUW consensus protocols more generally.
 This repository containing the following scripts of the complete project - 
 
 
-### **BSE Consensus, Implementation.ipynb**:
+## **BSE Consensus, Implementation.ipynb**:
 Containing the core protocol level implementation, notably for the base useful computation, proof generation and proof validation.
 Below are the key components and features:
 
@@ -51,6 +51,8 @@ Handles block validation and mining using BSE or standard proof of work.
 Integrates BSE functionality to simulate market sessions for block creation.
 Allows users to submit job requests for custom market sessions.
 
-- BSE Consensus, Results.ipynb: Empirical outputs from running the BSE Consensus protocol a few hundred times across a wide range of trader specification and market environments. 
-
-- BSE.py: An adjusted version of the original Bristol Stock Exchange limit orderbook market simulation, allowing for the deterministic seeding of market sessions.
+ ## **BSE Consensus, Results.ipynb** 
+ 
+ Empirical outputs from running the BSE Consensus protocol a few hundred times across a wide range of trader specification and market environments. 
+ 
+ # **BSE.py** An adjusted version of the original Bristol Stock Exchange limit orderbook market simulation, allowing for the deterministic seeding of market sessions.
