@@ -21,7 +21,7 @@ Involving the training of trading algorithms within a simulated trading environm
 necessarily difficult, but relatively useful computation, specifically integrating the limit order book trading
 environment simulator the Bristol Stock Exchange (BSE). Analysis of the protocol relating to its security
 is also conducted to ensure the integrity of the underlying consensus mechanism, and further investigation
-into of the protocol’s efficiency and overall usefulness is conducted too, with the ultimate aim of better
+into the protocol’s efficiency and overall usefulness is conducted also, with the ultimate aim of better
 understanding the viability using BSE as a foundation for a protocol based puzzle schemes and the future
 of PoUW consensus protocols more generally.
 
