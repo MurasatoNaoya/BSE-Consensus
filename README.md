@@ -1,4 +1,4 @@
-# BSE Consensus README
+#README
 
 
 The consensus primitive known as Proof of Work (PoW) has long had an integral role in securing
