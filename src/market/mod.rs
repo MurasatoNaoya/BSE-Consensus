@@ -1,1 +1,2 @@
-//! stub
+pub mod book;
+pub use book::*;
