@@ -4,3 +4,4 @@ pub mod crypto;
 pub mod market;
 pub mod agents;
 pub mod pouw;
+pub mod cli;
