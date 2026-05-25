@@ -1,0 +1,7 @@
+# The v0.1 Python proof-of-concept is preserved for reference only — exclude it
+# from GitHub's language statistics so the bar reflects the Rust rewrite.
+legacy/** linguist-vendored
+*.ipynb linguist-vendored
+
+# Design/spec docs are documentation, not source.
+docs/** linguist-documentation
