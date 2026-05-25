@@ -91,6 +91,102 @@ pub fn mine(seed: u64, difficulty: u32) -> (Block, Vec<Frame>) {
     (Block { seed, difficulty, n_frames: n as u32, root, best_strategy, claimed_fitness }, frames)
 }
 
+use crate::crypto::{MerkleProof, verify_proof};
+
+/// Fiat-Shamir challenge indices in `[0, n_frames-1)` (each indexes a transition
+/// `f[c] -> f[c+1]`), derived from the committed root.
+///
+/// The final transition `n_frames-2` is FORCE-INCLUDED as the first index so the
+/// verifier's final-frame fitness-claim consistency check always runs. The
+/// remaining `k-1` indices are derived via Fiat-Shamir: `H(root ‖ i) mod (n_frames-1)`.
+pub fn challenges(root: &[u8; 32], n_frames: u32, k: u32) -> Vec<u32> {
+    let span = (n_frames - 1) as u64; // number of transitions
+    let mut out = Vec::with_capacity(k as usize);
+    if k == 0 { return out; }
+    // force-include the final transition first
+    out.push(n_frames - 2);
+    // derive the remaining k-1 indices via Fiat-Shamir
+    for i in 0..(k - 1) {
+        let mut buf = [0u8; 36];
+        buf[..32].copy_from_slice(root);
+        buf[32..].copy_from_slice(&i.to_le_bytes());
+        let h = hash(&buf);
+        let v = u64::from_le_bytes(h[..8].try_into().unwrap());
+        out.push((v % span) as u32);
+    }
+    out
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ChallengeAnswer {
+    pub index: u32,
+    pub frame: Frame,
+    pub frame_next: Frame,
+    pub path: MerkleProof,
+    pub path_next: MerkleProof,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Proof {
+    pub answers: Vec<ChallengeAnswer>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum VerifyError {
+    MalformedBlock,
+    MerklePathInvalid,
+    TransitionMismatch(u32),
+    BelowThreshold,
+    FitnessClaimInconsistent,
+}
+
+/// Build a spot-check proof: answer each Fiat-Shamir challenge with both frames of
+/// the challenged transition and their Merkle inclusion paths against the committed root.
+pub fn prove(block: &Block, frames: &[Frame], k: u32) -> Proof {
+    let leaves: Vec<[u8; 32]> = frames.iter().map(|f| f.leaf()).collect();
+    let tree = MerkleTree::build(&leaves);
+    let answers = challenges(&block.root, block.n_frames, k)
+        .into_iter()
+        .map(|c| {
+            let i = c as usize;
+            ChallengeAnswer {
+                index: c,
+                frame: frames[i].clone(),
+                frame_next: frames[i + 1].clone(),
+                path: tree.proof(i),
+                path_next: tree.proof(i + 1),
+            }
+        })
+        .collect();
+    Proof { answers }
+}
+
+/// Cheap, sound verification. Nothing miner-claimed that the verifier can recompute is trusted.
+pub fn verify(block: &Block, proof: &Proof, k: u32) -> Result<(), VerifyError> {
+    if block.n_frames < 2 { return Err(VerifyError::MalformedBlock); }
+    // usefulness enforced by the verifier
+    if block.claimed_fitness < threshold(block.difficulty) { return Err(VerifyError::BelowThreshold); }
+    // recompute the challenges from the root — the prover cannot choose them
+    let expected = challenges(&block.root, block.n_frames, k);
+    if proof.answers.len() != expected.len() { return Err(VerifyError::MalformedBlock); }
+    for (ans, &exp) in proof.answers.iter().zip(expected.iter()) {
+        if ans.index != exp { return Err(VerifyError::MalformedBlock); }
+        // Merkle inclusion of BOTH frames against the committed root
+        if !verify_proof(&block.root, &ans.frame.leaf(), &ans.path) { return Err(VerifyError::MerklePathInvalid); }
+        if !verify_proof(&block.root, &ans.frame_next.leaf(), &ans.path_next) { return Err(VerifyError::MerklePathInvalid); }
+        // re-execute the single transition deterministically — recomputed, not trusted
+        if step(&ans.frame) != ans.frame_next { return Err(VerifyError::TransitionMismatch(ans.index)); }
+        // when this challenge lands on the last transition, the claimed best must match
+        if ans.frame_next.gen + 1 == block.n_frames {
+            let (bp, bf) = ans.frame_next.best();
+            if bp != block.best_strategy || bf != block.claimed_fitness {
+                return Err(VerifyError::FitnessClaimInconsistent);
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,5 +204,42 @@ mod tests {
         for i in 0..frames.len()-1 {
             assert_eq!(step(&frames[i]), frames[i+1], "transition {i} must reproduce");
         }
+    }
+}
+
+#[cfg(test)]
+mod verify_tests {
+    use super::*;
+    #[test]
+    fn challenges_are_deterministic_and_in_range() {
+        let (b, _) = mine(7, 3);
+        let c1 = challenges(&b.root, b.n_frames, 4);
+        let c2 = challenges(&b.root, b.n_frames, 4);
+        assert_eq!(c1, c2);
+        // every challenged transition index must be < n_frames-1
+        for c in &c1 { assert!(*c < b.n_frames - 1); }
+        // the final transition n_frames-2 is force-included as the first index
+        assert_eq!(c1[0], b.n_frames - 2);
+    }
+    #[test]
+    fn valid_block_verifies() {
+        let (b, frames) = mine(7, 3);
+        let proof = prove(&b, &frames, 4);
+        assert!(verify(&b, &proof, 4).is_ok());
+    }
+    #[test]
+    fn tampered_fitness_below_threshold_rejected() {
+        let (mut b, frames) = mine(7, 1);
+        let proof = prove(&b, &frames, 4);
+        b.claimed_fitness = threshold(1) - 1; // claim below threshold
+        assert!(matches!(verify(&b, &proof, 4), Err(VerifyError::BelowThreshold)));
+    }
+    #[test]
+    fn tampered_frame_rejected() {
+        let (b, frames) = mine(7, 3);
+        let mut proof = prove(&b, &frames, 4);
+        // corrupt the first challenged "next" frame so step() != next
+        if let Some(ca) = proof.answers.get_mut(0) { ca.frame_next.fitness[0] ^= 0x1234; }
+        assert!(verify(&b, &proof, 4).is_err());
     }
 }
