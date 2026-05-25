@@ -1,6 +1,8 @@
 # bse-consensus
 
-Proof-of-Useful-Work consensus. Mining runs a deterministic optimisation over a simulated limit-order-book market. Producing a block requires the full run; verification re-checks a random sample of steps in `O(k·log n)`.
+A **Proof-of-Useful-Work (PoUW)** consensus mechanism. Conventional Proof-of-Work secures a chain by burning cycles on arbitrary hashing; PoUW asks that the same effort produce something worthwhile. Here the work is a **deterministic optimisation inside a simulated limit-order-book market** — mining trains a trading strategy, and the trained strategy is the block's payload. Producing a block requires the full run; a verifier re-checks a random sample of steps in `O(k·log n)`.
+
+**Background.** The design follows the PoUW line of research — notably IOHK's *Ofelimos* — and uses the **Bristol Stock Exchange (BSE)**, Dave Cliff's limit-order-book market simulator, as the workload. It began as a University of Bristol research project and is reimplemented here in Rust with an integer-deterministic core and cryptographically verifiable proofs.
 
 ## Usage
 
