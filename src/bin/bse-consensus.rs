@@ -57,7 +57,10 @@ fn main() {
         }
         Cmd::Verify => {
             let bundle: Bundle =
-                serde_json::from_reader(std::io::stdin()).expect("valid bundle JSON");
+                serde_json::from_reader(std::io::stdin()).unwrap_or_else(|e| {
+                    eprintln!("error: invalid bundle JSON: {e}");
+                    std::process::exit(1);
+                });
             match verify(&bundle.block, &bundle.proof, bundle.challenges) {
                 Ok(()) => {
                     eprintln!(
@@ -73,7 +76,10 @@ fn main() {
         }
         Cmd::Inspect => {
             let bundle: Bundle =
-                serde_json::from_reader(std::io::stdin()).expect("valid bundle JSON");
+                serde_json::from_reader(std::io::stdin()).unwrap_or_else(|e| {
+                    eprintln!("error: invalid bundle JSON: {e}");
+                    std::process::exit(1);
+                });
             println!(
                 "seed={} difficulty={} frames={} challenges={}\nbest={:?} fitness={}\nroot={}",
                 bundle.block.seed,

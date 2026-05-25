@@ -29,7 +29,7 @@ The verifier re-derives everything from the header; nothing miner-claimed is tru
 
 **Header-bound commitment.** `block_commit = BLAKE3(seed_le ‖ difficulty_le ‖ n_frames_le ‖ root)`. Challenges are derived from `block_commit`, not the bare root. Any edit to `seed`, `difficulty`, `n_frames`, or `root` changes the commitment and therefore the expected challenge set — so relabelling or truncating a block changes which transitions must be answered, and the presented proof no longer matches.
 
-**Challenge derivation.** `k` indices in `[0, n_frames−2)` are derived via Fiat-Shamir (`H(commit ‖ i) mod (n_frames−1)`). The final transition (`n_frames−2`) is force-included as index 0, so the last-frame fitness claim is always checked.
+**Challenge derivation.** `k` indices in `[0, n_frames−1)` are derived via Fiat-Shamir (`H(commit ‖ i) mod (n_frames−1)`). The final transition (`n_frames−2`) is force-included as index 0, so the last-frame fitness claim is always checked.
 
 **Per-challenge checks:**
 - Merkle inclusion of both `frame[c]` and `frame[c+1]` against the committed `root`.
@@ -51,7 +51,7 @@ The verifier re-derives everything from the header; nothing miner-claimed is tru
 | Concern | Mechanism |
 |---------|-----------|
 | RNG | Seeded ChaCha20 (`DetRng`), stream position (`get_word_pos`) recorded per `Frame` |
-| Arithmetic | Integer and fixed-point only in anything hashed — no floats |
+| Arithmetic | Integer only in anything hashed — no floats |
 | Collections | `BTreeMap` + `Vec` throughout; no `HashMap` |
 | Order book | FIFO price-time priority, all prices `i64` |
 | Frame encoding | Fixed-field-order little-endian bytes; `POP` (= 8) is a protocol constant |
@@ -94,7 +94,7 @@ cargo run -- mine --seed 7 --difficulty 2 | cargo run -- verify
 
 # Human-readable summary
 cargo run -- mine --seed 7 --difficulty 2 | cargo run -- inspect
-# → seed=7 difficulty=2 frames=12 challenges=10
+# → seed=7 difficulty=2 frames=12 challenges=12
 #   best=StrategyParams { aggressiveness: ..., spread: ... } fitness=...
 #   root=<hex>
 
