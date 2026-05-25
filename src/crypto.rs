@@ -1,1 +1,93 @@
-//! stub
+//! BLAKE3 hashing and domain-separated Merkle tree with inclusion proofs.
+
+pub fn hash(bytes: &[u8]) -> [u8; 32] { *blake3::hash(bytes).as_bytes() }
+
+fn hash_pair(l: &[u8;32], r: &[u8;32]) -> [u8;32] {
+    let mut buf = [0u8; 65];
+    buf[0] = 0x01; // node domain tag
+    buf[1..33].copy_from_slice(l);
+    buf[33..65].copy_from_slice(r);
+    hash(&buf)
+}
+fn hash_leaf(l: &[u8;32]) -> [u8;32] {
+    let mut buf = [0u8; 33];
+    buf[0] = 0x00; // leaf domain tag
+    buf[1..33].copy_from_slice(l);
+    hash(&buf)
+}
+
+pub struct MerkleTree { levels: Vec<Vec<[u8;32]>> } // levels[0] = hashed leaves
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct MerkleProof { pub index: usize, pub siblings: Vec<[u8;32]> }
+
+impl MerkleTree {
+    pub fn build(leaves: &[[u8;32]]) -> Self {
+        assert!(!leaves.is_empty());
+        let mut levels = vec![leaves.iter().map(hash_leaf).collect::<Vec<_>>()];
+        while levels.last().unwrap().len() > 1 {
+            let cur = levels.last().unwrap();
+            let mut next = Vec::with_capacity((cur.len()+1)/2);
+            let mut i = 0;
+            while i < cur.len() {
+                let l = cur[i];
+                let r = if i+1 < cur.len() { cur[i+1] } else { cur[i] }; // duplicate last
+                next.push(hash_pair(&l, &r));
+                i += 2;
+            }
+            levels.push(next);
+        }
+        MerkleTree { levels }
+    }
+    pub fn root(&self) -> [u8;32] { *self.levels.last().unwrap().first().unwrap() }
+    pub fn proof(&self, mut index: usize) -> MerkleProof {
+        let orig = index;
+        let mut siblings = Vec::new();
+        for level in &self.levels[..self.levels.len()-1] {
+            let sib = if index % 2 == 0 { (index+1).min(level.len()-1) } else { index-1 };
+            siblings.push(level[sib]);
+            index /= 2;
+        }
+        MerkleProof { index: orig, siblings }
+    }
+}
+
+pub fn verify_proof(root: &[u8;32], leaf: &[u8;32], proof: &MerkleProof) -> bool {
+    let mut h = hash_leaf(leaf);
+    let mut idx = proof.index;
+    for sib in &proof.siblings {
+        h = if idx % 2 == 0 { hash_pair(&h, sib) } else { hash_pair(sib, &h) };
+        idx /= 2;
+    }
+    &h == root
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn leaf(b: u8) -> [u8;32] { hash(&[b]) }
+
+    #[test]
+    fn proof_verifies_and_tamper_fails() {
+        let leaves: Vec<[u8;32]> = (0..5u8).map(leaf).collect(); // non-power-of-two on purpose
+        let tree = MerkleTree::build(&leaves);
+        let root = tree.root();
+        for i in 0..leaves.len() {
+            let p = tree.proof(i);
+            assert!(verify_proof(&root, &leaves[i], &p), "index {i} should verify");
+        }
+        // wrong leaf fails
+        let p0 = tree.proof(0);
+        assert!(!verify_proof(&root, &leaf(99), &p0));
+        // tampered sibling fails
+        let mut p1 = tree.proof(1);
+        p1.siblings[0][0] ^= 0xff;
+        assert!(!verify_proof(&root, &leaves[1], &p1));
+    }
+
+    #[test]
+    fn root_is_stable() {
+        let leaves: Vec<[u8;32]> = (0..4u8).map(leaf).collect();
+        assert_eq!(MerkleTree::build(&leaves).root(), MerkleTree::build(&leaves).root());
+    }
+}
