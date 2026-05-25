@@ -120,7 +120,7 @@ pub fn block_commit(block: &Block) -> [u8; 32] {
     let mut buf = Vec::with_capacity(8 + 4 + 4 + 32);
     buf.extend_from_slice(&block.seed.to_le_bytes());
     buf.extend_from_slice(&block.difficulty.to_le_bytes());
-    buf.extend_from_slice(&(block.n_frames as u32).to_le_bytes());
+    buf.extend_from_slice(&block.n_frames.to_le_bytes());
     buf.extend_from_slice(&block.root);
     hash(&buf)
 }
