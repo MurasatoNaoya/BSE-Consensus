@@ -258,6 +258,90 @@ mod tests {
             assert_eq!(step(&frames[i]), frames[i+1], "transition {i} must reproduce");
         }
     }
+
+    // New: generations(d) == d*4 + 4
+    #[test]
+    fn generations_formula() {
+        for d in 0u32..=10 {
+            assert_eq!(generations(d), (d as usize) * 4 + 4,
+                "generations({d}) must equal d*4+4");
+        }
+    }
+
+    // New: threshold(d) == d*10
+    #[test]
+    fn threshold_formula() {
+        for d in 0u32..=10 {
+            assert_eq!(threshold(d), (d as i64) * 10,
+                "threshold({d}) must equal d*10");
+        }
+    }
+
+    // New: min_challenges(d) == 8 + d
+    #[test]
+    fn min_challenges_formula() {
+        for d in 0u32..=10 {
+            assert_eq!(min_challenges(d), 8 + d,
+                "min_challenges({d}) must equal 8+d");
+        }
+    }
+
+    // New: Frame::best tie-break is deterministic — same frame always returns same result.
+    #[test]
+    fn frame_best_is_deterministic() {
+        let (_b, frames) = mine(7, 1);
+        for f in &frames {
+            let r1 = f.best();
+            let r2 = f.best();
+            assert_eq!(r1, r2, "best() must be deterministic on the same frame");
+        }
+    }
+
+    // New: canonical_bytes is stable across calls and changes when a field changes.
+    #[test]
+    fn canonical_bytes_stable_and_sensitive() {
+        let (_b, frames) = mine(7, 1);
+        let f = &frames[0];
+        let bytes1 = f.canonical_bytes();
+        let bytes2 = f.canonical_bytes();
+        assert_eq!(bytes1, bytes2, "canonical_bytes must be idempotent");
+        // mutate one field and verify the output changes
+        let mut f2 = f.clone();
+        f2.gen = f.gen + 1;
+        assert_ne!(f.canonical_bytes(), f2.canonical_bytes(),
+            "canonical_bytes must differ when gen changes");
+        let mut f3 = f.clone();
+        f3.seed = f.seed.wrapping_add(1);
+        assert_ne!(f.canonical_bytes(), f3.canonical_bytes(),
+            "canonical_bytes must differ when seed changes");
+    }
+
+    // New: challenges returns exactly k indices, all < n_frames-1, with index 0 force-included as n_frames-2.
+    #[test]
+    fn challenges_count_range_and_force_include() {
+        let (b, _) = mine(7, 2);
+        let commit = block_commit(&b);
+        let n = b.n_frames;
+        for k in [1u32, 5, 10, min_challenges(2)] {
+            let cs = challenges(&commit, n, k);
+            assert_eq!(cs.len(), k as usize, "challenges must return exactly k indices for k={k}");
+            for &c in &cs {
+                assert!(c < n - 1, "challenge {c} must be < n_frames-1={}", n - 1);
+            }
+            // index 0 is always the forced final transition
+            assert_eq!(cs[0], n - 2,
+                "first challenge must be force-included final transition n_frames-2={}", n - 2);
+        }
+    }
+
+    // New: challenges with k==0 returns empty vec (edge case).
+    #[test]
+    fn challenges_k_zero_returns_empty() {
+        let (b, _) = mine(7, 1);
+        let commit = block_commit(&b);
+        let cs = challenges(&commit, b.n_frames, 0);
+        assert!(cs.is_empty(), "k=0 must return empty challenges");
+    }
 }
 
 #[cfg(test)]

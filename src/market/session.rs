@@ -59,4 +59,38 @@ mod tests {
         let b = run_session(5, StrategyParams{aggressiveness:40, spread:0}, 200);
         assert!(a != b);
     }
+
+    // New: zero steps → zero fitness (no trades can occur).
+    #[test]
+    fn zero_steps_yields_zero_fitness() {
+        let p = StrategyParams { aggressiveness: 10, spread: 2 };
+        assert_eq!(run_session(42, p, 0), 0, "no steps means no trades, fitness must be 0");
+    }
+
+    // New: fitness is deterministic even when called after other unrelated work.
+    #[test]
+    fn fitness_deterministic_independent_of_intermediate_work() {
+        let p = StrategyParams { aggressiveness: 15, spread: 3 };
+        let f1 = run_session(77, p, 100);
+        // do some unrelated work in between
+        let _noise: Vec<i64> = (0..10)
+            .map(|i| run_session(i, StrategyParams { aggressiveness: i as i64, spread: 0 }, 50))
+            .collect();
+        let f2 = run_session(77, p, 100);
+        assert_eq!(f1, f2, "fitness must be deterministic regardless of intermediate calls");
+    }
+
+    // New: distinct param sets produce distinct, stable fitness values.
+    #[test]
+    fn distinct_params_produce_distinct_stable_fitness() {
+        let p1 = StrategyParams { aggressiveness: 5, spread: 0 };
+        let p2 = StrategyParams { aggressiveness: 25, spread: 5 };
+        let f1a = run_session(99, p1, 150);
+        let f1b = run_session(99, p1, 150);
+        let f2a = run_session(99, p2, 150);
+        let f2b = run_session(99, p2, 150);
+        assert_eq!(f1a, f1b, "p1 fitness must be stable across calls");
+        assert_eq!(f2a, f2b, "p2 fitness must be stable across calls");
+        assert_ne!(f1a, f2a, "different params must yield different fitness values");
+    }
 }

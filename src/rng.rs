@@ -55,4 +55,40 @@ mod tests {
         r2.set_position(pos);
         assert_eq!(r2.next_u64(), next);
     }
+
+    // New: gen_range_i64 where lo == hi must always return lo.
+    #[test]
+    fn gen_range_degenerate_lo_eq_hi() {
+        let mut r = DetRng::from_seed(99);
+        for v in [-1_000_000i64, 0, 1, 42, i64::MAX / 2] {
+            assert_eq!(r.gen_range_i64(v, v), v, "lo==hi must always return lo");
+        }
+    }
+
+    // New: a wider range stays entirely in-bounds across many draws.
+    #[test]
+    fn gen_range_wider_range_stays_in_bounds() {
+        let mut r = DetRng::from_seed(17);
+        for _ in 0..2000 {
+            let v = r.gen_range_i64(-500, 500);
+            assert!((-500..=500).contains(&v));
+        }
+    }
+
+    // New: set_position to an arbitrary earlier position reproduces the exact subsequent stream.
+    #[test]
+    fn set_position_reproduces_stream() {
+        let mut r = DetRng::from_seed(5);
+        // consume some values to get to an interesting position
+        for _ in 0..50 { let _ = r.next_u64(); }
+        let checkpoint = r.position();
+        // record 10 values from this point
+        let expected: Vec<u64> = (0..10).map(|_| r.next_u64()).collect();
+        // consume more values so the stream is well past the checkpoint
+        for _ in 0..30 { let _ = r.next_u64(); }
+        // restore and verify the stream is identical
+        r.set_position(checkpoint);
+        let replayed: Vec<u64> = (0..10).map(|_| r.next_u64()).collect();
+        assert_eq!(expected, replayed, "set_position must reproduce the exact stream");
+    }
 }

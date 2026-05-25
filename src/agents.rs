@@ -61,4 +61,72 @@ mod tests {
         let mut r1 = DetRng::from_seed(8); let mut r2 = DetRng::from_seed(8);
         assert_eq!(a.quote(&mut r1).price, b.quote(&mut r2).price);
     }
+
+    // New: ZIC ask stays within its configured range [limit, min_price.max(limit) + 100].
+    #[test]
+    fn zic_ask_stays_within_range() {
+        let limit = 50;
+        let min_price = 1;
+        let mut z = Zic { id: 2, side: Side::Ask, limit, min_price };
+        let mut r = DetRng::from_seed(7);
+        let lo = limit;
+        let hi = min_price.max(limit) + 100;
+        for _ in 0..500 {
+            let o = z.quote(&mut r);
+            assert_eq!(o.side, Side::Ask);
+            assert!(o.price >= lo && o.price <= hi,
+                "ZIC ask price {} out of [{}, {}]", o.price, lo, hi);
+        }
+    }
+
+    // New: Evolvable bid clamps to [min_price, limit].
+    #[test]
+    fn evolvable_bid_clamps_to_range() {
+        let limit = 100i64;
+        let min_price = 10i64;
+        let p = StrategyParams { aggressiveness: 30, spread: 5 };
+        let mut trader = Evolvable { id: 3, side: Side::Bid, limit, min_price, params: p };
+        let mut r = DetRng::from_seed(11);
+        for _ in 0..500 {
+            let o = trader.quote(&mut r);
+            assert_eq!(o.side, Side::Bid);
+            assert!(o.price >= min_price && o.price <= limit,
+                "Evolvable bid price {} out of [{}, {}]", o.price, min_price, limit);
+        }
+    }
+
+    // New: Evolvable ask always >= limit.
+    #[test]
+    fn evolvable_ask_stays_at_or_above_limit() {
+        let limit = 60i64;
+        let min_price = 1i64;
+        let p = StrategyParams { aggressiveness: 20, spread: 8 };
+        let mut trader = Evolvable { id: 4, side: Side::Ask, limit, min_price, params: p };
+        let mut r = DetRng::from_seed(13);
+        for _ in 0..500 {
+            let o = trader.quote(&mut r);
+            assert_eq!(o.side, Side::Ask);
+            assert!(o.price >= limit,
+                "Evolvable ask price {} must be >= limit {}", o.price, limit);
+        }
+    }
+
+    // New: extreme StrategyParams still produce in-bounds, valid orders for both sides.
+    #[test]
+    fn extreme_strategy_params_stay_in_bounds() {
+        let limit = 100i64;
+        let min_price = 1i64;
+        let extreme = StrategyParams { aggressiveness: 1_000_000, spread: 1_000_000 };
+        let mut bid_trader = Evolvable { id: 5, side: Side::Bid, limit, min_price, params: extreme };
+        let mut ask_trader = Evolvable { id: 6, side: Side::Ask, limit, min_price, params: extreme };
+        let mut r = DetRng::from_seed(19);
+        for _ in 0..200 {
+            let bo = bid_trader.quote(&mut r);
+            assert!(bo.price >= min_price && bo.price <= limit,
+                "extreme bid price {} out of [{}, {}]", bo.price, min_price, limit);
+            let ao = ask_trader.quote(&mut r);
+            assert!(ao.price >= limit,
+                "extreme ask price {} must be >= limit {}", ao.price, limit);
+        }
+    }
 }
